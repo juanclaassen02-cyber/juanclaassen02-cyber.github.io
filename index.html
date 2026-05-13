@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Angry Cake - Slot Game</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a0a2e;
+    font-family: 'Arial Black', sans-serif;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* Stars background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 20% 50%, #2d1b69 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, #1a0a2e 0%, #0d0520 100%);
+    z-index: -1;
+  }
+
+  h1 {
+    font-size: 3rem;
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #ff6b6b, #ffd93d, #ff6b6b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    filter: drop-shadow(0 0 20px #ff6b6b);
+    letter-spacing: 3px;
+  }
+
+  .subtitle {
+    color: #ffd93d;
+    font-size: 0.9rem;
+    text-align: center;
+    margin-top: -15px;
+    margin-bottom: 15px;
+    letter-spacing: 2px;
+  }
+
+  /* Game container */
+  .game-wrapper {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 10px 20px;
+    max-width: 1100px;
+    width: 100%;
+  }
+
+  /* Left panel - angry character */
+  .character-panel {
+    width: 160px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .character-box {
+    width: 160px;
+    height: 200px;
+    background: linear-gradient(180deg, #2a1a4a 0%, #1a0a2e 100%);
+    border: 2px solid #ff6b6b;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Angry person SVG character */
+  #angry-person {
+    font-size: 80px;
+    transition: transform 0.1s;
+    position: relative;
+    z-index: 2;
+    cursor: default;
+    user-select: none;
+  }
+
+  #angry-person.throwing {
+    animation: throw-anim 0.6s ease-out;
+  }
+
+  @keyframes throw-anim {
+    0% { transform: translateX(0) rotate(0deg); }
+    30% { transform: translateX(-15px) rotate(-20deg); }
+    60% { transform: translateX(20px) rotate(15deg); }
+    100% { transform: translateX(0) rotate(0deg); }
+  }
+
+  .angry-label {
+    color: #ff6b6b;
+    font-size: 0.75rem;
+    text-align: center;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+
+  /* Cake projectile */
+  .cake-projectile {
+    position: fixed;
+    font-size: 32px;
+    pointer-events: none;
+    z-index: 1000;
+    transition: none;
+  }
+
+  /* Main slot area */
+  .slot-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Reels */
+  .reels-container {
+    position: relative;
+    background: linear-gradient(180deg, #0d0520 0%, #1a0a2e 100%);
+    border: 3px solid #7b2fff;
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 0 40px rgba(123, 47, 255, 0.5), inset 0 0 20px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+
+  .reels-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 60px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+    z-index: 10;
+    pointer-events: none;
+    border-radius: 13px 13px 0 0;
+  }
+
+  .reels-container::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+    z-index: 10;
+    pointer-events: none;
+    border-radius: 0 0 13px 13px;
+  }
+
+  .reels {
+    display: flex;
+    gap: 8px;
+  }
+
+  .reel {
+    width: 110px;
+    height: 330px;
+    overflow: hidden;
+    position: relative;
+    border-radius: 8px;
+  }
+
+  .reel-inner {
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.05s linear;
+  }
+
+  .reel-inner.spinning {
+    transition: none;
+  }
+
+  .symbol-cell {
+    width: 110px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 58px;
+    position: relative;
+    flex-shrink: 0;
+    border-radius: 8px;
+    transition: background 0.3s;
+  }
+
+  .symbol-cell.win {
+    background: rgba(255, 217, 61, 0.3);
+    box-shadow: 0 0 20px rgba(255, 217, 61, 0.6);
+    animation: win-pulse 0.5s ease-in-out infinite alternate;
+  }
+
+  .symbol-cell.multiplied {
+    background: rgba(255, 107, 107, 0.3);
+    box-shadow: 0 0 25px rgba(255, 107, 107, 0.8);
+  }
+
+  @keyframes win-pulse {
+    from { box-shadow: 0 0 10px rgba(255, 217, 61, 0.4); }
+    to { box-shadow: 0 0 30px rgba(255, 217, 61, 1); }
+  }
+
+  /* Multiplier badge on symbol */
+  .mult-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: #ff6b6b;
+    color: #fff;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 1px solid #fff;
+    z-index: 5;
+    animation: badge-pop 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  }
+
+  @keyframes badge-pop {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+
+  /* Win line overlay */
+  .win-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 3px;
+    background: #ffd93d;
+    box-shadow: 0 0 10px #ffd93d;
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .win-line.active {
+    opacity: 1;
+    animation: line-flash 0.5s ease-in-out infinite alternate;
+  }
+
+  @keyframes line-flash {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+  }
+
+  /* Center highlight frame */
+  .center-frame {
+    position: absolute;
+    left: 12px; right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 110px;
+    border: 2px solid rgba(255, 217, 61, 0.4);
+    border-radius: 8px;
+    pointer-events: none;
+    z-index: 15;
+  }
+
+  /* Info panel */
+  .info-bar {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .info-box {
+    background: rgba(123, 47, 255, 0.2);
+    border: 1px solid #7b2fff;
+    border-radius: 10px;
+    padding: 8px 18px;
+    text-align: center;
+    min-width: 120px;
+  }
+
+  .info-box .label {
+    font-size: 0.65rem;
+    color: #a78bda;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .info-box .value {
+    font-size: 1.4rem;
+    color: #ffd93d;
+    font-weight: bold;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .bet-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(123, 47, 255, 0.2);
+    border: 1px solid #7b2fff;
+    border-radius: 10px;
+    padding: 6px 12px;
+  }
+
+  .bet-btn {
+    background: #7b2fff;
+    border: none;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .bet-btn:hover { background: #9b4fff; }
+
+  .bet-value {
+    color: #ffd93d;
+    font-size: 1.1rem;
+    min-width: 50px;
+    text-align: center;
+  }
+
+  .spin-btn {
+    background: linear-gradient(135deg, #ff6b6b, #ff4444);
+    border: none;
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: bold;
+    padding: 14px 50px;
+    border-radius: 50px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    box-shadow: 0 4px 20px rgba(255, 107, 107, 0.5);
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .spin-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 6px 30px rgba(255, 107, 107, 0.7);
+  }
+
+  .spin-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .bonus-buy-btn {
+    background: linear-gradient(135deg, #ffd93d, #ffb800);
+    border: none;
+    color: #1a0a2e;
+    font-size: 0.85rem;
+    font-weight: bold;
+    padding: 10px 20px;
+    border-radius: 50px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(255, 217, 61, 0.4);
+    transition: all 0.2s;
+  }
+
+  .bonus-buy-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(255, 217, 61, 0.6);
+  }
+
+  .bonus-buy-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Right panel - paytable */
+  .paytable-panel {
+    width: 150px;
+    flex-shrink: 0;
+    background: rgba(123, 47, 255, 0.1);
+    border: 1px solid #7b2fff;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .paytable-panel h3 {
+    text-align: center;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: #a78bda;
+    margin-bottom: 10px;
+  }
+
+  .pay-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(123, 47, 255, 0.2);
+    font-size: 0.75rem;
+  }
+
+  .pay-symbol { font-size: 22px; }
+  .pay-mult { color: #ffd93d; font-weight: bold; }
+
+  /* Message overlay */
+  .message-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .message-overlay.show {
+    opacity: 1;
+  }
+
+  .message-box {
+    background: linear-gradient(135deg, #2d1b69, #1a0a2e);
+    border: 3px solid #ffd93d;
+    border-radius: 20px;
+    padding: 30px 50px;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(255, 217, 61, 0.5);
+    animation: msg-bounce 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  }
+
+  @keyframes msg-bounce {
+    0% { transform: scale(0.5); }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  .message-box h2 {
+    font-size: 2.5rem;
+    color: #ffd93d;
+    text-shadow: 0 0 20px #ffd93d;
+  }
+
+  .message-box p {
+    font-size: 1.2rem;
+    color: #fff;
+    margin-top: 10px;
+  }
+
+  /* Bonus mode overlay */
+  .bonus-mode-bar {
+    display: none;
+    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #ff6b6b);
+    background-size: 200% 100%;
+    animation: bonus-shimmer 1.5s linear infinite;
+    color: #1a0a2e;
+    text-align: center;
+    padding: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    letter-spacing: 3px;
+    width: 100%;
+    border-radius: 8px;
+  }
+
+  .bonus-mode-bar.active { display: block; }
+
+  @keyframes bonus-shimmer {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  /* Splatter effect */
+  .splatter {
+    position: fixed;
+    pointer-events: none;
+    z-index: 900;
+    font-size: 36px;
+    animation: splatter-anim 0.8s forwards;
+  }
+
+  @keyframes splatter-anim {
+    0% { transform: scale(0) rotate(0deg); opacity: 1; }
+    50% { transform: scale(1.5) rotate(20deg); opacity: 1; }
+    100% { transform: scale(1) rotate(10deg); opacity: 0; }
+  }
+
+  /* Coin rain */
+  .coin {
+    position: fixed;
+    font-size: 24px;
+    pointer-events: none;
+    z-index: 800;
+    animation: coin-fall linear forwards;
+  }
+
+  @keyframes coin-fall {
+    0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* History log */
+  .history-panel {
+    width: 100%;
+    max-width: 600px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(123, 47, 255, 0.3);
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+  }
+
+  .history-panel h4 {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: #a78bda;
+    margin-bottom: 6px;
+  }
+
+  .history-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 80px;
+    overflow-y: auto;
+  }
+
+  .history-entry {
+    font-size: 0.72rem;
+    color: #ccc;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .history-entry.win { color: #ffd93d; }
+  .history-entry.bonus { color: #ff6b6b; }
+</style>
+</head>
+<body>
+
+<h1>🎂 ANGRY CAKE 🎂</h1>
+<p class="subtitle">SMASH YOUR WAY TO RICHES</p>
+
+<div class="game-wrapper">
+
+  <!-- Left: Character -->
+  <div class="character-panel">
+    <div class="character-box">
+      <div id="angry-person">😤</div>
+    </div>
+    <div class="angry-label" id="anger-label">READY TO SMASH</div>
+    <div class="info-box" style="width:100%">
+      <div class="label">Bonus Spins</div>
+      <div class="value" id="bonus-spins-left">0</div>
+    </div>
+  </div>
+
+  <!-- Center: Slot area -->
+  <div class="slot-area">
+    <div class="bonus-mode-bar" id="bonus-bar">🎂 ANGRY CAKE BONUS! 🎂</div>
+    <div class="reels-container">
+      <div class="center-frame"></div>
+      <div class="reels" id="reels"></div>
+    </div>
+
+    <div class="info-bar">
+      <div class="info-box">
+        <div class="label">Balance</div>
+        <div class="value" id="balance">1000</div>
+      </div>
+      <div class="info-box">
+        <div class="label">Last Win</div>
+        <div class="value" id="last-win">0</div>
+      </div>
+      <div class="info-box">
+        <div class="label">Total Win</div>
+        <div class="value" id="total-win">0</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="bet-control">
+        <button class="bet-btn" id="bet-down">−</button>
+        <div class="bet-value">Bet: <span id="bet-display">10</span></div>
+        <button class="bet-btn" id="bet-up">+</button>
+      </div>
+      <button class="spin-btn" id="spin-btn">SPIN</button>
+      <button class="bonus-buy-btn" id="bonus-buy-btn">🎂 BUY BONUS<br><small id="bonus-buy-cost">Cost: 100</small></button>
+    </div>
+  </div>
+
+  <!-- Right: Paytable -->
+  <div class="paytable-panel">
+    <h3>PAYTABLE</h3>
+    <div class="pay-row"><span class="pay-symbol">🎂</span><span class="pay-mult">×50</span></div>
+    <div class="pay-row"><span class="pay-symbol">💣</span><span class="pay-mult">×30</span></div>
+    <div class="pay-row"><span class="pay-symbol">😤</span><span class="pay-mult">×25</span></div>
+    <div class="pay-row"><span class="pay-symbol">🍒</span><span class="pay-mult">×15</span></div>
+    <div class="pay-row"><span class="pay-symbol">🍋</span><span class="pay-mult">×10</span></div>
+    <div class="pay-row"><span class="pay-symbol">🍊</span><span class="pay-mult">×8</span></div>
+    <div class="pay-row"><span class="pay-symbol">🔔</span><span class="pay-mult">×5</span></div>
+    <div class="pay-row"><span class="pay-symbol">⭐</span><span class="pay-mult">×3</span></div>
+    <hr style="border-color: rgba(123,47,255,0.3); margin: 8px 0">
+    <div style="font-size:0.65rem; color:#a78bda; text-align:center">3+ in a row<br>on any payline</div>
+    <hr style="border-color: rgba(123,47,255,0.3); margin: 8px 0">
+    <div style="font-size:0.65rem; color:#ff6b6b; text-align:center">🎂 = Scatter<br>3+ = BONUS!</div>
+    <hr style="border-color: rgba(123,47,255,0.3); margin: 8px 0">
+    <div style="font-size:0.65rem; color:#ffd93d; text-align:center">Bonus: Angry<br>person throws<br>cake = multipliers!</div>
+  </div>
+
+</div>
+
+<!-- History -->
+<div class="history-panel">
+  <h4>SPIN HISTORY</h4>
+  <div class="history-entries" id="history-entries"></div>
+</div>
+
+<!-- Message overlay -->
+<div class="message-overlay" id="message-overlay">
+  <div class="message-box">
+    <h2 id="message-title">BIG WIN!</h2>
+    <p id="message-body">You won 500 coins!</p>
+  </div>
+</div>
+
+<script>
+// =====================
+// GAME CONFIGURATION
+// =====================
+const SYMBOLS = [
+  { emoji: '🎂', name: 'cake',   mult: 50, weight: 2 },
+  { emoji: '💣', name: 'bomb',   mult: 30, weight: 3 },
+  { emoji: '😤', name: 'angry',  mult: 25, weight: 4 },
+  { emoji: '🍒', name: 'cherry', mult: 15, weight: 8 },
+  { emoji: '🍋', name: 'lemon',  mult: 10, weight: 10 },
+  { emoji: '🍊', name: 'orange', mult: 8,  weight: 12 },
+  { emoji: '🔔', name: 'bell',   mult: 5,  weight: 15 },
+  { emoji: '⭐', name: 'star',   mult: 3,  weight: 20 },
+];
+
+const REELS = 5;
+const ROWS = 3;
+const BONUS_BUY_MULTIPLIER = 10;
+const BONUS_SPINS_AWARDED = 8;
+
+// 9 paylines (row-based + diagonals)
+const PAYLINES = [
+  [0,0,0,0,0], // top row
+  [1,1,1,1,1], // middle row
+  [2,2,2,2,2], // bottom row
+  [0,1,2,1,0], // V shape
+  [2,1,0,1,2], // inverted V
+  [0,0,1,2,2], // diagonal down
+  [2,2,1,0,0], // diagonal up
+  [1,0,0,0,1], // top corners
+  [1,2,2,2,1], // bottom corners
+];
+
+// =====================
+// GAME STATE
+// =====================
+let balance = 1000;
+let bet = 10;
+let spinning = false;
+let bonusSpinsLeft = 0;
+let totalWin = 0;
+let isBonusMode = false;
+let grid = []; // [col][row]
+let multipliers = []; // [col][row]
+
+// =====================
+// WEIGHTED RANDOM SYMBOL
+// =====================
+function randomSymbol(forceCake = false) {
+  if (forceCake) return SYMBOLS[0];
+  const total = SYMBOLS.reduce((s, sym) => s + sym.weight, 0);
+  let r = Math.random() * total;
+  for (const sym of SYMBOLS) {
+    r -= sym.weight;
+    if (r <= 0) return sym;
+  }
+  return SYMBOLS[SYMBOLS.length - 1];
+}
+
+function buildReelStrip(length = 30) {
+  return Array.from({ length }, () => randomSymbol());
+}
+
+// =====================
+// DOM SETUP
+// =====================
+const reelsEl = document.getElementById('reels');
+let reelElements = [];
+let reelInners = [];
+let strips = [];
+
+function initReels() {
+  reelsEl.innerHTML = '';
+  reelElements = [];
+  reelInners = [];
+  strips = [];
+  grid = [];
+  multipliers = [];
+
+  for (let c = 0; c < REELS; c++) {
+    const reelEl = document.createElement('div');
+    reelEl.className = 'reel';
+
+    const inner = document.createElement('div');
+    inner.className = 'reel-inner';
+    reelEl.appendChild(inner);
+    reelsEl.appendChild(reelEl);
+
+    reelElements.push(reelEl);
+    reelInners.push(inner);
+
+    const strip = buildReelStrip(40);
+    strips.push(strip);
+    grid.push([strip[0], strip[1], strip[2]]);
+    multipliers.push([1, 1, 1]);
+
+    // Build cells (show extra above for scroll illusion)
+    renderReelCells(c, 0);
+  }
+}
+
+function renderReelCells(col, offset) {
+  const inner = reelInners[col];
+  inner.innerHTML = '';
+  const strip = strips[col];
+  // Show symbols from offset-3 to offset+ROWS+3
+  const start = Math.max(0, offset - 3);
+  const end = Math.min(strip.length - 1, offset + ROWS + 3);
+  for (let i = start; i <= end; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'symbol-cell';
+    cell.textContent = strip[i].emoji;
+    inner.appendChild(cell);
+  }
+  // Position inner to show rows at offset
+  const visibleIndex = offset - start;
+  inner.style.transform = `translateY(-${visibleIndex * 110}px)`;
+}
+
+// =====================
+// SPIN LOGIC
+// =====================
+function generateOutcome() {
+  const newGrid = [];
+  for (let c = 0; c < REELS; c++) {
+    const col = [];
+    for (let r = 0; r < ROWS; r++) {
+      col.push(randomSymbol());
+    }
+    newGrid.push(col);
+  }
+
+  // Scatter logic: ~15% chance for 3+ cakes in bonus mode or normal
+  if (isBonusMode || Math.random() < 0.06) {
+    // seed some cakes
+    const cakePositions = [];
+    while (cakePositions.length < 3) {
+      const c = Math.floor(Math.random() * REELS);
+      const r = Math.floor(Math.random() * ROWS);
+      if (!cakePositions.find(p => p.c === c && p.r === r)) {
+        cakePositions.push({ c, r });
+        newGrid[c][r] = SYMBOLS[0]; // cake
+      }
+    }
+  }
+  return newGrid;
+}
+
+// =====================
+// SPIN ANIMATION
+// =====================
+function spinReels(outcome) {
+  return new Promise(resolve => {
+    const delays = [0, 100, 200, 300, 400];
+    let done = 0;
+
+    for (let c = 0; c < REELS; c++) {
+      const inner = reelInners[c];
+      const col = c;
+
+      // Generate a longer strip ending with outcome
+      const newStrip = buildReelStrip(20);
+      newStrip.push(outcome[col][0], outcome[col][1], outcome[col][2]);
+      // pad 2 more
+      newStrip.push(randomSymbol(), randomSymbol());
+      strips[col] = newStrip;
+
+      const stopAt = newStrip.length - ROWS - 2;
+
+      setTimeout(() => {
+        animateReel(col, 0, stopAt, () => {
+          done++;
+          if (done === REELS) resolve();
+        });
+      }, delays[c]);
+    }
+  });
+}
+
+function animateReel(col, pos, stopPos, onDone) {
+  if (pos >= stopPos) {
+    // Set final position
+    grid[col] = [strips[col][stopPos], strips[col][stopPos + 1], strips[col][stopPos + 2]];
+    renderReelCells(col, stopPos);
+    onDone();
+    return;
+  }
+
+  const speed = pos < stopPos - 5 ? 1 : 1; // fast always, slow near end
+  const jump = pos < stopPos - 8 ? 3 : 1;
+  renderReelCells(col, pos);
+
+  const delay = pos < stopPos - 8 ? 30 : 60;
+  setTimeout(() => animateReel(col, pos + jump, stopPos, onDone), delay);
+}
+
+// =====================
+// BONUS: CAKE THROW
+// =====================
+function throwCakeAtSymbol(col, row) {
+  return new Promise(resolve => {
+    const personEl = document.getElementById('angry-person');
+    const personRect = personEl.getBoundingClientRect();
+    const cells = reelInners[col].querySelectorAll('.symbol-cell');
+
+    // find visible cell index for row
+    const reelRect = reelElements[col].getBoundingClientRect();
+    const targetX = reelRect.left + reelRect.width / 2;
+    const targetY = reelRect.top + row * 110 + 55;
+
+    // animate character
+    personEl.classList.add('throwing');
+    setTimeout(() => personEl.classList.remove('throwing'), 600);
+
+    // create projectile
+    const proj = document.createElement('div');
+    proj.className = 'cake-projectile';
+    proj.textContent = '🎂';
+    document.body.appendChild(proj);
+
+    const startX = personRect.left + personRect.width / 2;
+    const startY = personRect.top + personRect.height / 2;
+
+    proj.style.left = startX + 'px';
+    proj.style.top = startY + 'px';
+
+    const dx = targetX - startX;
+    const dy = targetY - startY;
+    const steps = 20;
+    let step = 0;
+
+    const interval = setInterval(() => {
+      step++;
+      const t = step / steps;
+      const x = startX + dx * t;
+      const y = startY + dy * t - Math.sin(t * Math.PI) * 60;
+      proj.style.left = x + 'px';
+      proj.style.top = y + 'px';
+      proj.style.transform = `rotate(${t * 720}deg)`;
+
+      if (step >= steps) {
+        clearInterval(interval);
+        proj.remove();
+
+        // splatter
+        const splat = document.createElement('div');
+        splat.className = 'splatter';
+        splat.textContent = '💥';
+        splat.style.left = (targetX - 20) + 'px';
+        splat.style.top = (targetY - 20) + 'px';
+        document.body.appendChild(splat);
+        setTimeout(() => splat.remove(), 800);
+
+        // assign multiplier
+        const multValues = [2, 3, 5, 10];
+        const m = multValues[Math.floor(Math.random() * multValues.length)];
+        multipliers[col][row] = m;
+
+        // show badge
+        updateGridDisplay();
+
+        resolve();
+      }
+    }, 25);
+  });
+}
+
+async function runBonusCakeThrows() {
+  const personEl = document.getElementById('angry-person');
+  personEl.textContent = '🤬';
+  document.getElementById('anger-label').textContent = 'THROWING CAKE!';
+
+  // Reset multipliers
+  for (let c = 0; c < REELS; c++) multipliers[c] = [1, 1, 1];
+
+  // Throw 3–6 cakes at random symbols
+  const numThrows = 3 + Math.floor(Math.random() * 4);
+  const targets = new Set();
+  while (targets.size < numThrows) {
+    const c = Math.floor(Math.random() * REELS);
+    const r = Math.floor(Math.random() * ROWS);
+    targets.add(`${c},${r}`);
+  }
+
+  for (const key of targets) {
+    const [c, r] = key.split(',').map(Number);
+    await new Promise(res => setTimeout(res, 200));
+    await throwCakeAtSymbol(c, r);
+    await new Promise(res => setTimeout(res, 150));
+  }
+
+  personEl.textContent = '😤';
+  document.getElementById('anger-label').textContent = 'BONUS ACTIVE!';
+}
+
+// =====================
+// WIN EVALUATION
+// =====================
+function evaluateWins() {
+  let totalSpinWin = 0;
+  const winCells = new Set();
+
+  for (const line of PAYLINES) {
+    // Check for matching symbols across reels on this payline
+    const rowSymbols = line.map((row, col) => grid[col][row]);
+    const first = rowSymbols[0];
+    let matchLen = 1;
+
+    for (let i = 1; i < REELS; i++) {
+      if (rowSymbols[i].name === first.name) matchLen++;
+      else break;
+    }
+
+    if (matchLen >= 3) {
+      const lineMult = line.slice(0, matchLen).reduce((m, row, col) => m * multipliers[col][row], 1);
+      const win = bet * first.mult * (matchLen - 2) * lineMult;
+      totalSpinWin += win;
+
+      for (let i = 0; i < matchLen; i++) {
+        winCells.add(`${i},${line[i]}`);
+      }
+    }
+  }
+
+  // Scatter: count cakes anywhere
+  let cakeCount = 0;
+  for (let c = 0; c < REELS; c++) {
+    for (let r = 0; r < ROWS; r++) {
+      if (grid[c][r].name === 'cake') cakeCount++;
+    }
+  }
+
+  let bonusTriggered = false;
+  if (cakeCount >= 3 && !isBonusMode) {
+    bonusTriggered = true;
+  }
+
+  return { totalSpinWin, winCells, bonusTriggered, cakeCount };
+}
+
+// =====================
+// DISPLAY
+// =====================
+function updateGridDisplay() {
+  for (let c = 0; c < REELS; c++) {
+    const cells = reelInners[c].querySelectorAll('.symbol-cell');
+    // cells correspond to visible rows
+    for (let r = 0; r < ROWS; r++) {
+      const stripStart = strips[c].length - ROWS - 2;
+      // index in reel inner children
+      const cellIndex = r; // inner was rendered from stopPos
+      if (cells[cellIndex]) {
+        cells[cellIndex].textContent = grid[c][r].emoji;
+        // Remove old badges
+        const oldBadge = cells[cellIndex].querySelector('.mult-badge');
+        if (oldBadge) oldBadge.remove();
+
+        if (multipliers[c][r] > 1) {
+          cells[cellIndex].classList.add('multiplied');
+          const badge = document.createElement('span');
+          badge.className = 'mult-badge';
+          badge.textContent = `×${multipliers[c][r]}`;
+          cells[cellIndex].appendChild(badge);
+        } else {
+          cells[cellIndex].classList.remove('multiplied');
+        }
+      }
+    }
+  }
+}
+
+function highlightWins(winCells) {
+  for (let c = 0; c < REELS; c++) {
+    const cells = reelInners[c].querySelectorAll('.symbol-cell');
+    for (let r = 0; r < ROWS; r++) {
+      if (cells[r]) {
+        if (winCells.has(`${c},${r}`)) {
+          cells[r].classList.add('win');
+        } else {
+          cells[r].classList.remove('win');
+        }
+      }
+    }
+  }
+}
+
+function clearHighlights() {
+  for (let c = 0; c < REELS; c++) {
+    const cells = reelInners[c].querySelectorAll('.symbol-cell');
+    cells.forEach(cell => cell.classList.remove('win'));
+  }
+}
+
+function updateUI() {
+  document.getElementById('balance').textContent = balance;
+  document.getElementById('bonus-spins-left').textContent = bonusSpinsLeft;
+  document.getElementById('bonus-buy-cost').textContent = `Cost: ${bet * BONUS_BUY_MULTIPLIER}`;
+}
+
+function showMessage(title, body, duration = 2000) {
+  const overlay = document.getElementById('message-overlay');
+  document.getElementById('message-title').textContent = title;
+  document.getElementById('message-body').textContent = body;
+  overlay.classList.add('show');
+  setTimeout(() => overlay.classList.remove('show'), duration);
+}
+
+function addHistory(text, type = '') {
+  const container = document.getElementById('history-entries');
+  const entry = document.createElement('div');
+  entry.className = `history-entry ${type}`;
+  entry.innerHTML = `<span>${text}</span><span>${new Date().toLocaleTimeString()}</span>`;
+  container.insertBefore(entry, container.firstChild);
+  if (container.children.length > 20) container.lastChild.remove();
+}
+
+function spawnCoins(count = 10) {
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const coin = document.createElement('div');
+      coin.className = 'coin';
+      coin.textContent = '🪙';
+      coin.style.left = (10 + Math.random() * 80) + 'vw';
+      coin.style.top = '0px';
+      const dur = 1 + Math.random() * 2;
+      coin.style.animation = `coin-fall ${dur}s linear forwards`;
+      document.body.appendChild(coin);
+      setTimeout(() => coin.remove(), dur * 1000);
+    }, i * 100);
+  }
+}
+
+// =====================
+// MAIN SPIN FUNCTION
+// =====================
+async function doSpin(isBonusSpin = false) {
+  if (spinning) return;
+  if (!isBonusSpin && balance < bet) {
+    showMessage('OUT OF COINS', 'Not enough balance!', 1500);
+    return;
+  }
+
+  spinning = true;
+  clearHighlights();
+
+  if (!isBonusSpin) {
+    balance -= bet;
+  }
+  updateUI();
+
+  // Reset multipliers for new spin (bonus mode keeps them per-spin after cake throw)
+  for (let c = 0; c < REELS; c++) multipliers[c] = [1, 1, 1];
+
+  // Generate outcome
+  const outcome = generateOutcome();
+
+  // Run spin animation
+  document.getElementById('spin-btn').disabled = true;
+  document.getElementById('bonus-buy-btn').disabled = true;
+
+  await spinReels(outcome);
+
+  // Update grid state
+  for (let c = 0; c < REELS; c++) {
+    grid[c] = outcome[c];
+  }
+
+  updateGridDisplay();
+
+  // Bonus mode: throw cakes
+  if (isBonusMode) {
+    await new Promise(res => setTimeout(res, 300));
+    await runBonusCakeThrows();
+    await new Promise(res => setTimeout(res, 300));
+  }
+
+  // Evaluate wins
+  const { totalSpinWin, winCells, bonusTriggered, cakeCount } = evaluateWins();
+
+  highlightWins(winCells);
+  updateGridDisplay();
+
+  if (totalSpinWin > 0) {
+    balance += totalSpinWin;
+    totalWin += totalSpinWin;
+    document.getElementById('last-win').textContent = totalSpinWin;
+    document.getElementById('total-win').textContent = totalWin;
+
+    if (totalSpinWin >= bet * 20) {
+      showMessage('🎂 MEGA WIN! 🎂', `+${totalSpinWin} coins!`, 3000);
+      spawnCoins(20);
+    } else if (totalSpinWin >= bet * 10) {
+      showMessage('BIG WIN!', `+${totalSpinWin} coins!`, 2500);
+      spawnCoins(12);
+    } else if (totalSpinWin >= bet * 5) {
+      showMessage('WIN!', `+${totalSpinWin} coins!`, 2000);
+      spawnCoins(6);
+    }
+
+    addHistory(`Win: +${totalSpinWin}${isBonusMode ? ' [BONUS]' : ''}`, isBonusMode ? 'bonus' : 'win');
+  } else {
+    document.getElementById('last-win').textContent = 0;
+    addHistory('No win', '');
+  }
+
+  updateUI();
+
+  // Bonus trigger
+  if (bonusTriggered && !isBonusMode) {
+    await new Promise(res => setTimeout(res, 500));
+    showMessage('🎂 BONUS TRIGGERED! 🎂', `${BONUS_SPINS_AWARDED} Angry Cake Spins!`, 3000);
+    bonusSpinsLeft = BONUS_SPINS_AWARDED;
+    isBonusMode = true;
+    document.getElementById('bonus-bar').classList.add('active');
+    document.getElementById('angry-person').textContent = '🤬';
+    document.getElementById('anger-label').textContent = 'CAKE RAGE!';
+    addHistory(`BONUS TRIGGERED! ${BONUS_SPINS_AWARDED} spins`, 'bonus');
+    await new Promise(res => setTimeout(res, 3000));
+  }
+
+  // Handle bonus spins
+  if (isBonusMode) {
+    if (bonusSpinsLeft > 0) {
+      bonusSpinsLeft--;
+      updateUI();
+      if (bonusSpinsLeft === 0) {
+        isBonusMode = false;
+        document.getElementById('bonus-bar').classList.remove('active');
+        document.getElementById('angry-person').textContent = '😤';
+        document.getElementById('anger-label').textContent = 'READY TO SMASH';
+        showMessage('BONUS OVER', `Total won: ${totalWin} coins`, 2500);
+        addHistory(`Bonus ended. Total: ${totalWin}`, 'bonus');
+      }
+    }
+  }
+
+  spinning = false;
+  document.getElementById('spin-btn').disabled = false;
+  document.getElementById('bonus-buy-btn').disabled = false;
+
+  // Auto-continue bonus
+  if (isBonusMode && bonusSpinsLeft > 0) {
+    await new Promise(res => setTimeout(res, 600));
+    doSpin(true);
+  }
+}
+
+// =====================
+// BONUS BUY
+// =====================
+async function doBonusBuy() {
+  const cost = bet * BONUS_BUY_MULTIPLIER;
+  if (balance < cost) {
+    showMessage('NOT ENOUGH', `Need ${cost} coins`, 1500);
+    return;
+  }
+  balance -= cost;
+  totalWin = 0;
+  document.getElementById('total-win').textContent = 0;
+  bonusSpinsLeft = BONUS_SPINS_AWARDED;
+  isBonusMode = true;
+  document.getElementById('bonus-bar').classList.add('active');
+  document.getElementById('angry-person').textContent = '🤬';
+  document.getElementById('anger-label').textContent = 'CAKE RAGE!';
+  showMessage('🎂 BONUS BOUGHT! 🎂', `${BONUS_SPINS_AWARDED} Angry Cake Spins!`, 2500);
+  addHistory(`Bonus Bought! -${cost}`, 'bonus');
+  updateUI();
+  await new Promise(res => setTimeout(res, 2500));
+  doSpin(true);
+}
+
+// =====================
+// CONTROLS
+// =====================
+const BET_LEVELS = [1, 2, 5, 10, 20, 50, 100];
+let betIndex = 3;
+
+document.getElementById('bet-up').addEventListener('click', () => {
+  if (betIndex < BET_LEVELS.length - 1) {
+    betIndex++;
+    bet = BET_LEVELS[betIndex];
+    document.getElementById('bet-display').textContent = bet;
+    updateUI();
+  }
+});
+
+document.getElementById('bet-down').addEventListener('click', () => {
+  if (betIndex > 0) {
+    betIndex--;
+    bet = BET_LEVELS[betIndex];
+    document.getElementById('bet-display').textContent = bet;
+    updateUI();
+  }
+});
+
+document.getElementById('spin-btn').addEventListener('click', () => doSpin(false));
+document.getElementById('bonus-buy-btn').addEventListener('click', doBonusBuy);
+
+// Spacebar to spin
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !spinning) {
+    e.preventDefault();
+    doSpin(false);
+  }
+});
+
+// =====================
+// INIT
+// =====================
+initReels();
+updateUI();
+</script>
+</body>
+</html>
